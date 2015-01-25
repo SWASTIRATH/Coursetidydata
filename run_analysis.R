@@ -1,65 +1,49 @@
-library(plyr)
-library(reshape2)
+## step 1
+# read all the data
+test.labels <- read.table("test/y_test.txt", col.names="label")
+test.subjects <- read.table("test/subject_test.txt", col.names="subject")
+test.data <- read.table("test/X_test.txt")
+train.labels <- read.table("train/y_train.txt", col.names="label")
+train.subjects <- read.table("train/subject_train.txt", col.names="subject")
+train.data <- read.table("train/X_train.txt")
 
-## Goals
-## 1. each variable should be in one column
-## 2. each observation of that variable should be in a diferent row
-## 3. include ids to link tables together
+# put it together in the format of: subjects, labels, everything else
+data <- rbind(cbind(test.subjects, test.labels, test.data),
+              cbind(train.subjects, train.labels, train.data))
 
-## Merges the training and the test sets to create one data set.
+## step 2
+# read the features
+features <- read.table("features.txt", strip.white=TRUE, stringsAsFactors=FALSE)
+# only retain features of mean and standard deviation
+features.mean.std <- features[grep("mean\\(\\)|std\\(\\)", features$V2), ]
 
-root.dir <- "UCI HAR Dataset"
-data.set <- list()
+# select only the means and standard deviations from data
+# increment by 2 because data has subjects and labels in the beginning
+data.mean.std <- data[, c(1, 2, features.mean.std$V1+2)]
 
-message("loading features.txt")
-data.set$features <- read.table(paste(root.dir, "features.txt", sep="/"), col.names=c('id', 'name'), stringsAsFactors=FALSE)
+## step 3
+# read the labels (activities)
+labels <- read.table("activity_labels.txt", stringsAsFactors=FALSE)
+# replace labels in data with label names
+data.mean.std$label <- labels[data.mean.std$label, 2]
 
-message("loading activity_features.txt")
-data.set$activity_labels <- read.table(paste(root.dir, "activity_labels.txt", sep="/"), col.names=c('id', 'Activity'))
+## step 4
+# first make a list of the current column names and feature names
+good.colnames <- c("subject", "label", features.mean.std$V2)
+# then tidy that list
+# by removing every non-alphabetic character and converting to lowercase
+good.colnames <- tolower(gsub("[^[:alpha:]]", "", good.colnames))
+# then use the list as column names for data
+colnames(data.mean.std) <- good.colnames
 
+## step 5
+# find the mean for each combination of subject and label
+aggr.data <- aggregate(data.mean.std[, 3:ncol(data.mean.std)],
+                       by=list(subject = data.mean.std$subject, 
+                               label = data.mean.std$label),
+                       mean)
 
-message("loading test set")
-data.set$test <- cbind(subject=read.table(paste(root.dir, "test", "subject_test.txt", sep="/"), col.names="Subject"),
-                       y=read.table(paste(root.dir, "test", "y_test.txt", sep="/"), col.names="Activity.ID"),
-                       x=read.table(paste(root.dir, "test", "x_test.txt", sep="/")))
-
-message("loading train set")
-data.set$train <- cbind(subject=read.table(paste(root.dir, "train", "subject_train.txt", sep="/"), col.names="Subject"),
-                        y=read.table(paste(root.dir, "train", "y_train.txt", sep="/"), col.names="Activity.ID"),
-                        x=read.table(paste(root.dir, "train", "X_train.txt", sep="/")))
-
-rename.features <- function(col) {
-    col <- gsub("tBody", "Time.Body", col)
-    col <- gsub("tGravity", "Time.Gravity", col)
-
-    col <- gsub("fBody", "FFT.Body", col)
-    col <- gsub("fGravity", "FFT.Gravity", col)
-
-    col <- gsub("\\-mean\\(\\)\\-", ".Mean.", col)
-    col <- gsub("\\-std\\(\\)\\-", ".Std.", col)
-
-    col <- gsub("\\-mean\\(\\)", ".Mean", col)
-    col <- gsub("\\-std\\(\\)", ".Std", col)
-
-    return(col)
-}
-
-## Extracts only the measurements on the mean and standard deviation for each measurement.
-
-tidy <- rbind(data.set$test, data.set$train)[,c(1, 2, grep("mean\\(|std\\(", data.set$features$name) + 2)]
-
-## Uses descriptive activity names to name the activities in the data set
-
-names(tidy) <- c("Subject", "Activity.ID", rename.features(data.set$features$name[grep("mean\\(|std\\(", data.set$features$name)]))
-
-## Appropriately labels the data set with descriptive activity names.
-
-tidy <- merge(tidy, data.set$activity_labels, by.x="Activity.ID", by.y="id")
-tidy <- tidy[,!(names(tidy) %in% c("Activity.ID"))]
-
-## Creates a second, independent tidy data set with the average of each variable for each activity and each subject.
-
-tidy.mean <- ddply(melt(tidy, id.vars=c("Subject", "Activity")), .(Subject, Activity), summarise, MeanSamples=mean(value))
-
-write.csv(tidy.mean, file = "tidy.mean.txt",row.names = FALSE)
-write.csv(tidy, file = "tidy.txt",row.names = FALSE)
+## step nothing
+# write the data for course upload
+write.table(format(aggr.data, scientific=T), "tidy2.txt",
+            row.names=F, col.names=F, quote=2)
