@@ -1,48 +1,68 @@
-##Getting and cleaning data
-For creating a tidy data set of wearable computing data originally from http://archive.ics.uci.edu/ml/datasets/Human+Activity+Recognition+Using+Smartphones
+#Peer assessment for Getting and Cleaning Data
 
-##Files in this repo
+------------  
+Human Activity Recognition Using Smartphones Dataset
+Author : Matthieu Ferry
+Version : 1.0
+------------  
 
-README.md -- you are reading it right now
-CodeBook.md -- codebook describing variables, the data and transformations
-run_analysis.R -- actual R code
-run_analysis.R goals
+All this project is about manipulating and tidying the data contained in the UCI HAR Dataset provided with this assignment.
+UCI HAR Dataset contains its own CodeBook and Readme file, so I will only cover my own actions and files here.
 
-You should create one R script called run_analysis.R that does the following: 1. Merges the training and the test sets to create one data set. 2. Extracts only the measurements on the mean and standard deviation for each measurement. 3. Uses descriptive activity names to name the activities in the data set 4. Appropriately labels the data set with descriptive activity names. 5. Creates a second, independent tidy data set with the average of each variable for each activity and each subject.
+How the script works includes more than the transformations to the variables. For example, your README might say, "Read these files in, combined them in this way, subsetted this using that, transformed these variables, changed an ordered list to a dataframe, wrote data-frame out using write.table". The README is much more concerned with how to use the computer to do the work and to look at the work.
 
-It should run in a folder of the Samsung data (the zip had this folder: UCI HAR Dataset) The script assumes it has in it's working directory the following files and folders:
 
-activity_labels.txt
-features.txt
-test/
-train/
-The output is created in working directory with the name of tidy2.txt
+The projet includes the following files:
+=========================================
 
-Note: the R script is built to run without including any libraries for the purpose of this course.
+- 'README.md': this file
 
-##run_analysis.R walkthrough
+- 'run_analysis.R': R script manipulating UCI HAR Dataset to answer the questions of the assignment
 
-It follows the goals step by step.
+- 'CodeBook.md': The Code Book for the assignment.
 
-Step 1:
+- 'my_tidy_data_set.txt': The tidy data set resulting of the 5th step of the assignment.
 
-Read all the test and training files: y_test.txt, subject_test.txt and X_test.txt.
-Combine the files to a data frame in the form of subjects, labels, the rest of the data.
-Step 2:
+How the script 'run_analysis.R' works :
+=========================================
 
-Read the features from features.txt and filter it to only leave features that are either means ("mean()") or standard deviations ("std()"). The reason for leaving out meanFreq() is that the goal for this step is to only include means and standard deviations of measurements, of which meanFreq() is neither.
-A new data frame is then created that includes subjects, labels and the described features.
-Step 3:
+Setup process
+--------------
+Fisrt I defined several variables relative to the file names and path, so they can be adjusted easily without interfering with loading instructions
 
-Read the activity labels from activity_labels.txt and replace the numbers with the text.
-Step 4:
+Loading process
+--------------
+To speed up the loading of training and testing set, I loaded the first rows to look at the columns classes, then I loaded the full datasets.  
+On tricky part is NOT to use " " as a separator, else you'll get a wrong number of records and variables.
+I loaded the subject and activity id for both test and training sets in distinct data frames 
 
-Make a column list (includig "subjects" and "label" at the start)
-Tidy-fy the list by removing all non-alphanumeric characters and converting the result to lowercase
-Apply the now-good-columnnames to the data frame
-Step 5:
+Binding process
+--------------
+Here is a chart created by David Hood, COMMUNITY TA in the course explaining how the different data pieces existing in separate files should be gathered.
+![alt text](HowToBindData.png)  
 
-Create a new data frame by finding the mean for each combination of subject and label. It's done by aggregate() function
-Final step:
+So I column binded subject ids, activity ids and data for test data on one hand and traingin data on the other hand.  
+Then I row binded the data to have a complete data set with both training and testing data.
 
-Write the new tidy set into a text file called tidy2.txt, formatted similarly to the original files.
+Naming the columns
+--------------
+I added the names of the columns contained in the features.txt file
+
+Extracting mean and std measurements
+--------------
+To Extract only the measurements on the mean and standard deviation for each measurement I scanned all the names of the variables and removed the columns of the dataset when the columns neither contained "mean" nor "std"
+
+Use descriptive activity names
+--------------
+To use descriptive activity names to name the activities in the data set I first loaded the data of 'activity_labels.txt', the made a join on activity id and then removed the useless activity id columns
+
+Descriptive variable names
+--------------
+To appropriately labels the data set with descriptive variable names I removed '()' and '-' charaters in the variable names and used uppercase to have 'Mean' instead of 'mean' and 'Std' instead of 'std'
+
+Tidy data set
+--------------
+To creates a second, independent tidy data set I used ddply form plyr package to group by columns Subject.id and Activity.Name and apply the mean to the other variables.
+I then recorded the tidy set in the 'my_tidy_data_set.txt' file.
+
+The tidy set has 180 observation of 81 variables.
