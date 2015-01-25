@@ -140,4 +140,4 @@ for (i in 3:length(labels)) { #skips the 2 first
 }
 names(tidy) <- labels
 
-write.table(tidy,"my_tidy_data_set.txt",row.name=FALSE)
+write.table(tidy,"tidy.txt",row.name=FALSE)
